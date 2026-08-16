@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="ceb">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827">
+<link rel="manifest" href="manifest.json">
+<title>SUKOT 7</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:#111827;color:#fff;padding:18px 16px;position:sticky;top:0;z-index:9}h1{margin:0;font-size:23px}header small{opacity:.75}
+main{max-width:720px;margin:auto;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}
+.card{background:#fff;border-radius:15px;padding:13px;box-shadow:0 2px 8px #0001;margin-bottom:10px}
+.label{font-size:12px;color:#6b7280}.num{font-size:21px;font-weight:800;margin-top:3px}
+input,button{width:100%;padding:11px;border-radius:10px;border:1px solid #d1d5db;font:inherit;background:#fff}
+button{background:#111827;color:#fff;border:0;font-weight:700}.danger{background:#b91c1c}
+.toolbar{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}.store-title{display:flex;justify-content:space-between;align-items:center}.store-title b{font-size:17px}
+.pill{font-size:11px;padding:5px 8px;border-radius:99px;font-weight:800}.paid{background:#dcfce7;color:#166534}.partial{background:#fef3c7;color:#92400e}.unpaid{background:#fee2e2;color:#991b1b}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.fields .full{grid-column:1/-1}
+.tabs{display:flex;gap:7px;margin:10px 0}.tabs button{flex:1}.hidden{display:none}
+.history-row{padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:13px}.note{font-size:12px;color:#6b7280}
+.modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}
+.modal .box{background:#fff;border-radius:16px;padding:20px;width:min(360px,100%)}#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:30}
+</style>
+</head>
+<body>
+<header><h1>💰 SUKOT 7</h1><small>7 Stores • ₱800 kada gabii</small></header>
+<main>
+<div id="login" class="modal"><div class="box">
+<h2>🔐 SUKOT 7</h2><p class="note" id="pinMessage">Set og PIN sa unang paggamit.</p>
+<input id="pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="PIN (4–6 digits)">
+<br><br><button type="button" id="loginBtn">Continue</button>
+</div></div>
+<div id="app" class="hidden">
+<div class="tabs"><button type="button" onclick="showTab('today')">Today</button><button type="button" onclick="showTab('history')">History</button><button type="button" onclick="showTab('backup')">Backup</button></div>
+<section id="today">
+<div class="grid">
+<div class="card"><div class="label">Expected</div><div class="num">₱5,600</div></div>
+<div class="card"><div class="label">Collected</div><div class="num" id="collected">₱0</div></div>
+<div class="card"><div class="label">Balance</div><div class="num" id="balance">₱5,600</div></div>
+<div class="card"><div class="label">Paid</div><div class="num" id="paid">0 / 7</div></div>
+</div>
+<div class="toolbar"><input id="date" type="date"><button type="button" onclick="saveDay()">💾 Save Day</button></div>
+<div id="stores"></div>
+</section>
+<section id="history" class="hidden"><div class="card"><h2>📊 Collection History</h2><div id="historyList"></div></div></section>
+<section id="backup" class="hidden"><div class="card"><h2>💾 Backup</h2><p class="note">Export your records as JSON and keep the file somewhere safe.</p><button type="button" onclick="backup()">⬇ Export Backup</button><br><br><input id="restoreFile" type="file" accept=".json" onchange="restore(this)"><br><br><button type="button" class="danger" onclick="resetAll()">Delete All Records</button></div></section>
+</div></main><div id="toast"></div>
+<script>
+"use strict";
+const KEY="sukot7_pwa_v4",N=7,E=800;
+const STORE_NAMES=["KEVINSON","ALGENS","CHA-CARL","J&E","MINGGAY","ESTRELLAS","GUTOME"];
+const $=id=>document.getElementById(id);
+function blank(){return {pin:"",days:{}}}
+function load(){try{let x=JSON.parse(localStorage.getItem(KEY)||"null");if(!x||typeof x!=="object")return blank();if(!x.days)x.days={};if(typeof x.pin!=="string")x.pin="";return x}catch(e){return blank()}}
+let data=load();
+function persist(){localStorage.setItem(KEY,JSON.stringify(data))}
+function today(){let d=new Date(),l=new Date(d.getTime()-d.getTimezoneOffset()*60000);return l.toISOString().slice(0,10)}
+$("date").value=today();
+function toast(t){let x=$("toast");x.textContent=t;x.style.display="block";setTimeout(()=>x.style.display="none",1800)}
+function login(){let p=$("pin").value.trim();if(!/^\d{4,6}$/.test(p)){alert("PIN must be 4–6 digits.");return}if(!data.pin){data.pin=p;persist();openApp();toast("PIN saved.");return}if(p===data.pin){openApp()}else{alert("Wrong PIN.");$("pin").value="";$("pin").focus()}}
+function openApp(){$("login").style.display="none";$("app").classList.remove("hidden");render()}
+$("loginBtn").addEventListener("click",login);$("pin").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
+if(data.pin)$("pinMessage").textContent="Ibutang imong saved PIN para maka-access.";
+function records(){
+ let d=$("date").value||today();
+ if(!data.days[d]){data.days[d]=Array.from({length:N},(_,i)=>({store:STORE_NAMES[i],actual:0,time:"",rep:"",collector:"",remarks:""}));persist()}
+ else data.days[d].forEach((r,i)=>{if(!r.store)r.store=STORE_NAMES[i]});
+ return data.days[d]
+}
+function status(a){return a>=E?["PAID","paid"]:a>0?["PARTIAL","partial"]:["UNPAID","unpaid"]}
+function esc(s){return String(s??"").replaceAll("&","&amp;").replaceAll('"',"&quot;").replaceAll("<","&lt;").replaceAll(">","&gt;")}
+function render(){
+ let rs=records();
+ $("stores").innerHTML=rs.map((r,i)=>{let a=Number(r.actual)||0,s=status(a);return `<div class="card"><div class="store-title"><b>${esc(r.store)}</b><span class="pill ${s[1]}">${s[0]}</span></div><div class="fields">
+<div><div class="label">Expected</div><b>₱800</b></div><div><div class="label">Balance</div><b>₱${Math.max(E-a,0).toLocaleString()}</b></div>
+<div><div class="label">Actual Collected</div><input type="number" min="0" value="${a}" oninput="edit(${i},'actual',this.value)"></div>
+<div><div class="label">Time</div><input type="time" value="${esc(r.time)}" onchange="edit(${i},'time',this.value)"></div>
+<div><div class="label">Store Representative</div><input value="${esc(r.rep)}" onchange="edit(${i},'rep',this.value)" placeholder="Name/initial"></div>
+<div><div class="label">Collector</div><input value="${esc(r.collector)}" onchange="edit(${i},'collector',this.value)" placeholder="Name/initial"></div>
+<div class="full"><div class="label">Remarks</div><input value="${esc(r.remarks)}" onchange="edit(${i},'remarks',this.value)" placeholder="e.g. kulang ₱200"></div>
+</div></div>`}).join("");
+ update(rs)
+}
+function edit(i,f,v){let r=records()[i];r[f]=f==="actual"?Math.max(0,Number(v)||0):v;persist();update(records())}
+function update(rs){let c=rs.reduce((s,r)=>s+(Number(r.actual)||0),0);$("collected").textContent="₱"+c.toLocaleString();$("balance").textContent="₱"+Math.max(N*E-c,0).toLocaleString();$("paid").textContent=rs.filter(r=>(Number(r.actual)||0)>=E).length+" / 7"}
+function saveDay(){persist();toast("Na-save na ang adlaw.");renderHistory()}
+function showTab(t){["today","history","backup"].forEach(x=>$(x).classList.toggle("hidden",x!==t));if(t==="history")renderHistory()}
+function renderHistory(){let ds=Object.keys(data.days).sort().reverse();$("historyList").innerHTML=ds.length?ds.map(d=>{let rs=data.days[d],c=rs.reduce((s,r)=>s+(Number(r.actual)||0),0),p=rs.filter(r=>(Number(r.actual)||0)>=E).length;return `<div class="history-row"><b>${esc(d)}</b><br>Expected ₱5,600 • Collected ₱${c.toLocaleString()} • Balance ₱${Math.max(N*E-c,0).toLocaleString()}<br>Paid: ${p}/7</div>`}).join(""):"<p class='note'>Wala pay records.</p>"}
+function backup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="sukot7-backup.json";document.body.appendChild(a);a.click();a.remove();toast("Backup exported.")}
+function restore(inp){let f=inp.files&&inp.files[0];if(!f)return;let rd=new FileReader();rd.onload=()=>{try{let x=JSON.parse(rd.result);if(!x||!x.days)throw 0;data=x;if(typeof data.pin!=="string")data.pin="";persist();location.reload()}catch(e){alert("Invalid backup file.")}};rd.readAsText(f)}
+function resetAll(){if(confirm("Delete ALL Sukot 7 records and PIN?")){localStorage.removeItem(KEY);location.reload()}}
+$("date").addEventListener("change",render);
+if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+</script>
+</body></html>
