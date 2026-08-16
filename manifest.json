@@ -1,0 +1,12 @@
+{
+  "name":"BOARDWALK",
+  "short_name":"BOARDWALK",
+  "description":"Daily, weekly, monthly and printable collection tracker for 7 stores.",
+  "lang":"ceb",
+  "start_url":"./",
+  "scope":"./",
+  "display":"standalone",
+  "background_color":"#f3f4f6",
+  "theme_color":"#111827",
+  "orientation":"portrait"
+}
