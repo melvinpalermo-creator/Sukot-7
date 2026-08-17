@@ -126,7 +126,7 @@ function render(){
 <div><div class="label">Expected</div><b>₱800</b></div><div><div class="label">Balance</div><b>₱${Math.max(E-a,0).toLocaleString()}</b></div>
 <div><div class="label">Actual Collected</div><input type="number" min="0" value="${a}" oninput="edit(${i},'actual',this.value)"></div>
 <div><div class="label">Time</div><input type="time" value="${esc(r.time)}" onchange="edit(${i},'time',this.value)"></div>
-<div><div class="label">Paid By</div><input value="${esc(r.rep)}" onchange="edit(${i},'rep',this.value)" placeholder="Name/initial"></div>
+<div><div class="label">TENANT Signature</div><input value="${esc(r.rep)}" onchange="edit(${i},'rep',this.value)" placeholder="Name/initial"></div>
 <div><div class="label">Collector</div><input value="${esc(r.collector)}" onchange="edit(${i},'collector',this.value)" placeholder="Name/initial"></div>
 <div class="full"><div class="label">Remarks</div><input value="${esc(r.remarks)}" onchange="edit(${i},'remarks',this.value)" placeholder="e.g. kulang ₱200"></div></div></div>`
   }).join("");
