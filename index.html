@@ -1,0 +1,242 @@
+<!doctype html><html lang="ceb"><head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#111827"><link rel="manifest" href="manifest.json"><title>BOARDWALK</title>
+<style>
+*{box-sizing:border-box}body{margin:0;background:#f3f4f6;color:#111827;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+header{background:#111827;color:#fff;padding:18px 16px;position:sticky;top:0;z-index:9}h1{margin:0;font-size:23px}header small{opacity:.75}
+main{max-width:760px;margin:auto;padding:12px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:9px}.card{background:#fff;border-radius:15px;padding:13px;box-shadow:0 2px 8px #0001;margin-bottom:10px}
+.label{font-size:12px;color:#6b7280}.num{font-size:21px;font-weight:800;margin-top:3px}input,button{width:100%;padding:11px;border-radius:10px;border:1px solid #d1d5db;font:inherit;background:#fff}
+button{background:#111827;color:#fff;border:0;font-weight:700}.danger{background:#b91c1c}.toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap}display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:10px 0}
+.store-title{display:flex;justify-content:space-between;align-items:center}.store-title b{font-size:17px}.pill{font-size:11px;padding:5px 8px;border-radius:99px;font-weight:800}
+.paid{background:#dcfce7;color:#166534}.partial{background:#fef3c7;color:#92400e}.unpaid{background:#fee2e2;color:#991b1b}
+.fields{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:9px}.fields .full{grid-column:1/-1}
+.tabs{display:flex;gap:7px;margin:10px 0;overflow:auto}.tabs button{flex:1;min-width:85px}.hidden{display:none}
+.history-row{padding:10px 0;border-bottom:1px solid #e5e7eb;font-size:13px}.note{font-size:12px;color:#6b7280}
+.modal{position:fixed;inset:0;background:#0008;display:flex;align-items:center;justify-content:center;padding:20px;z-index:20}.modal .box{background:#fff;border-radius:16px;padding:20px;width:min(360px,100%)}
+#toast{position:fixed;bottom:18px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 14px;border-radius:10px;display:none;z-index:30}
+.report-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}.report-card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:12px;padding:12px}.report-card b{font-size:18px}
+
+@media print{
+  body{background:#fff}
+  header,.tabs,#login,#toast,#today,#history,#reports,#backup,.toolbar,.card>h2,.card>.note{display:none!important}
+  main{max-width:none;padding:0}
+  #app,#print{display:block!important}
+  #print .card{box-shadow:none;margin:0;padding:0}
+  #printPreview{display:block!important}
+  .print-report{display:block!important}
+}
+.print-report{background:#fff;padding:8px;font-size:13px}.monthly-section{margin:0 0 14px;page-break-inside:avoid}.monthly-title{text-align:center;margin:10px 0 5px;font-size:15px;border:1px solid #111;padding:6px}.grand-total-table{margin-top:16px;page-break-inside:avoid}
+.print-report h2{text-align:center;margin:4px 0}
+.print-report .sub{text-align:center;margin-bottom:14px}
+.print-table{width:100%;border-collapse:collapse;margin-top:8px}
+.print-table th,.print-table td{border:1px solid #111;padding:7px;text-align:left}
+.print-table th{text-align:center}
+.print-total{font-weight:800}
+.signatures{display:grid;grid-template-columns:1fr 1fr;gap:45px;margin-top:55px}
+.sig{text-align:center;border-top:1px solid #111;padding-top:6px}
+select{padding:9px;border:1px solid #d1d5db;border-radius:9px;background:#fff} label{font-size:13px;font-weight:700}</style></head><body>
+<header><h1>💰 BOARDWALK</h1><small>7 Stores • ₱800 kada gabii</small></header>
+<main>
+<div id="login" class="modal"><div class="box"><h2>🔐 BOARDWALK</h2><p class="note" id="pinMessage">Set og PIN sa unang paggamit.</p>
+<input id="pin" type="password" inputmode="numeric" maxlength="6" autocomplete="off" placeholder="PIN (4–6 digits)"><br><br>
+<button type="button" id="loginBtn">Continue</button></div></div>
+<div id="app" class="hidden">
+<div class="tabs"><button type="button" onclick="showTab('today')">Today</button><button type="button" onclick="showTab('history')">History</button><button type="button" onclick="showTab('reports')">Reports</button><button type="button" onclick="showTab('print')">🖨️ Print</button><button type="button" onclick="showTab('backup')">Backup</button></div>
+<section id="today"><div class="grid">
+<div class="card"><div class="label">Expected</div><div class="num">₱5,600</div></div>
+<div class="card"><div class="label">Collected</div><div class="num" id="collected">₱0</div></div>
+<div class="card"><div class="label">Balance</div><div class="num" id="balance">₱5,600</div></div>
+<div class="card"><div class="label">Paid</div><div class="num" id="paid">0 / 7</div></div></div>
+<div class="toolbar"><input id="date" type="date"><button type="button" onclick="saveDay()">💾 Save Day</button></div><div id="stores"></div></section>
+<section id="history" class="hidden"><div class="card"><h2>📊 Collection History</h2>
+<div class="toolbar"><label>Store:</label><select id="historyStore"></select></div>
+<div id="historyList"></div></div></section>
+<section id="reports" class="hidden"><div class="card"><h2>📈 Store Report</h2>
+<p class="note">Tagsa-tagsa nga report sa matag store. Ang report sa usa ka store dili magsagol sa uban.</p>
+<div class="toolbar"><label>Store:</label><select id="reportStore"></select></div>
+<div class="report-grid">
+<div class="report-card"><div class="label">This Week Expected</div><b id="weekExpected">₱0</b></div><div class="report-card"><div class="label">This Week Collected</div><b id="weekCollected">₱0</b></div>
+<div class="report-card"><div class="label">This Week Balance</div><b id="weekBalance">₱0</b></div><div class="report-card"><div class="label">This Week Paid</div><b id="weekPaid">0 / 0</b></div>
+<div class="report-card"><div class="label">This Month Expected</div><b id="monthExpected">₱0</b></div><div class="report-card"><div class="label">This Month Collected</div><b id="monthCollected">₱0</b></div>
+<div class="report-card"><div class="label">This Month Balance</div><b id="monthBalance">₱0</b></div><div class="report-card"><div class="label">This Month Paid</div><b id="monthPaid">0 / 0</b></div>
+</div></div>
+<div class="card"><h3>📅 Daily Records — <span id="reportStoreTitle"></span></h3><div id="dailyReport"></div></div></section>
+
+<section id="print" class="hidden">
+<div class="card">
+<h2>🖨️ Print / Save as PDF</h2>
+<p class="note">Pili og All Stores para sa 7 ka stores, o Individual Store para sa usa ra ka store.</p>
+<div class="toolbar">
+<label>Report Type:</label>
+<select id="printMode"><option value="all">All Stores</option><option value="individual">Individual Store</option></select>
+<select id="printStore"></select>
+<input id="printDate" type="date">
+<button type="button" onclick="preparePrint()">🖨️ Print / Save PDF</button>
+</div>
+<div id="printPreview"></div>
+</div>
+</section>
+<section id="backup" class="hidden"><div class="card"><h2>💾 Backup</h2><p class="note">Export your records as JSON and keep the file somewhere safe.</p>
+<button type="button" onclick="backup()">⬇ Export Backup</button><br><br><input id="restoreFile" type="file" accept=".json" onchange="restore(this)"><br><br>
+<button type="button" class="danger" onclick="resetAll()">Delete All Records</button></div></section>
+</div></main><div id="toast"></div>
+<script>
+"use strict";
+const KEY="sukot7_pwa_v5",N=7,E=800,STORE_NAMES=["KEVINSON","ALGENS","CHA-CARL","J&E","MINGGAY","ESTRELLAS","GUTOME"],$=id=>document.getElementById(id);
+function blank(){return{pin:"",days:{}}}
+function load(){try{let x=JSON.parse(localStorage.getItem(KEY)||"null");if(!x||typeof x!=="object")return blank();if(!x.days)x.days={};if(typeof x.pin!=="string")x.pin="";return x}catch(e){return blank()}}
+let data=load();
+function persist(){localStorage.setItem(KEY,JSON.stringify(data))}
+function today(){let d=new Date(),l=new Date(d.getTime()-d.getTimezoneOffset()*60000);return l.toISOString().slice(0,10)}
+$("date").value=today();
+function toast(t){let x=$("toast");x.textContent=t;x.style.display="block";setTimeout(()=>x.style.display="none",1800)}
+function login(){let p=$("pin").value.trim();if(!/^\d{4,6}$/.test(p)){alert("PIN must be 4–6 digits.");return}if(!data.pin){data.pin=p;persist();openApp();toast("PIN saved.");return}if(p===data.pin)openApp();else{alert("Wrong PIN.");$("pin").value="";$("pin").focus()}}
+function openApp(){$("login").style.display="none";$("app").classList.remove("hidden");initSelectors();render()}
+$("loginBtn").addEventListener("click",login);
+$("pin").addEventListener("keydown",e=>{if(e.key==="Enter")login()});
+if(data.pin)$("pinMessage").textContent="Ibutang imong saved PIN para maka-access.";
+
+function blankDay(){return Array.from({length:N},(_,i)=>({store:STORE_NAMES[i],actual:0,time:"",rep:"",collector:"",remarks:""}))}
+function records(){
+  let d=$("date").value||today();
+  if(!data.days[d]){data.days[d]=blankDay();persist()}
+  else{
+    if(!Array.isArray(data.days[d])) data.days[d]=blankDay();
+    data.days[d].forEach((r,i)=>{if(!r.store)r.store=STORE_NAMES[i]});
+  }
+  return data.days[d]
+}
+function status(a){return a>=E?["PAID","paid"]:a>0?["PARTIAL","partial"]:["UNPAID","unpaid"]}
+function esc(s){return String(s??"").replaceAll("&","&amp;").replaceAll('"',"&quot;").replaceAll("<","&lt;").replaceAll(">","&gt;")}
+function initSelectors(){
+  const opts=STORE_NAMES.map((s,i)=>`<option value="${i}">${i+1}. ${esc(s)}</option>`).join("");
+  ["historyStore","reportStore","printStore"].forEach(id=>{let el=$(id);if(el&&!el.options.length)el.innerHTML=opts});
+  if($("reportStore"))$("reportStore").onchange=renderReports;
+  if($("historyStore"))$("historyStore").onchange=renderHistory;
+  if($("printStore"))$("printStore").onchange=showPrint;
+  $("printMode").onchange=showPrint;
+  $("printDate").value=today();
+  $("printDate").onchange=showPrint;
+}
+function render(){
+  let rs=records();
+  $("stores").innerHTML=rs.map((r,i)=>{
+    let a=Number(r.actual)||0,s=status(a);
+    return `<div class="card"><div class="store-title"><b>${esc(r.store)}</b><span class="pill ${s[1]}">${s[0]}</span></div><div class="fields">
+<div><div class="label">Expected</div><b>₱800</b></div><div><div class="label">Balance</div><b>₱${Math.max(E-a,0).toLocaleString()}</b></div>
+<div><div class="label">Actual Collected</div><input type="number" min="0" value="${a}" oninput="edit(${i},'actual',this.value)"></div>
+<div><div class="label">Time</div><input type="time" value="${esc(r.time)}" onchange="edit(${i},'time',this.value)"></div>
+<div><div class="label">Paid By</div><input value="${esc(r.rep)}" onchange="edit(${i},'rep',this.value)" placeholder="Name/initial"></div>
+<div><div class="label">Collector</div><input value="${esc(r.collector)}" onchange="edit(${i},'collector',this.value)" placeholder="Name/initial"></div>
+<div class="full"><div class="label">Remarks</div><input value="${esc(r.remarks)}" onchange="edit(${i},'remarks',this.value)" placeholder="e.g. kulang ₱200"></div></div></div>`
+  }).join("");
+  update(rs)
+}
+function edit(i,f,v){let r=records()[i];r[f]=f==="actual"?Math.max(0,Number(v)||0):v;persist();update(records())}
+function update(rs){let c=rs.reduce((s,r)=>s+(Number(r.actual)||0),0);$("collected").textContent="₱"+c.toLocaleString();$("balance").textContent="₱"+Math.max(N*E-c,0).toLocaleString();$("paid").textContent=rs.filter(r=>(Number(r.actual)||0)>=E).length+" / 7"}
+function saveDay(){persist();toast("Na-save na ang adlaw.");renderHistory();renderReports()}
+function showTab(t){["today","history","reports","print","backup"].forEach(x=>$(x).classList.toggle("hidden",x!==t));if(t==="history")renderHistory();if(t==="reports")renderReports();if(t==="print")showPrint()}
+function selectedStore(id){return Math.max(0,Math.min(N-1,Number($(id)?.value)||0))}
+function renderHistory(){
+  let si=selectedStore("historyStore"), name=STORE_NAMES[si], ds=Object.keys(data.days).sort().reverse();
+  $("historyList").innerHTML=ds.length?ds.map(d=>{
+    let rs=data.days[d]||[],r=rs[si]||{actual:0},a=Number(r.actual)||0,s=status(a);
+    return `<div class="history-row"><b>${esc(d)}</b> • <span class="pill ${s[1]}">${s[0]}</span><br>Store: <b>${esc(name)}</b> • Expected ₱800 • Collected ₱${a.toLocaleString()} • Balance ₱${Math.max(E-a,0).toLocaleString()}<br>Paid By: ${esc(r.rep||"-")} • Collector: ${esc(r.collector||"-")} ${r.remarks?`• ${esc(r.remarks)}`:""}</div>`
+  }).join(""):"<p class='note'>Wala pay records.</p>"
+}
+function key(d){let y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`}
+function add(d,n){let x=new Date(d);x.setDate(x.getDate()+n);return x}
+function storeTotals(ds,si){
+  let expected=0,collected=0,balance=0,paid=0,days=0;
+  ds.forEach(d=>{let rs=data.days[d];if(!rs)return;days++;let r=rs[si]||{actual:0},a=Number(r.actual)||0;expected+=E;collected+=a;balance+=Math.max(E-a,0);if(a>=E)paid++});
+  return{expected,collected,balance,paid,days}
+}
+function renderReports(){
+  let si=selectedStore("reportStore"), name=STORE_NAMES[si];
+  $("reportStoreTitle").textContent=name;
+  let now=new Date(),monday=new Date(now.getFullYear(),now.getMonth(),now.getDate()),day=monday.getDay();
+  monday.setDate(monday.getDate()+(day===0?-6:1-day));
+  let week=[];for(let i=0;i<7;i++)week.push(key(add(monday,i)));
+  let prefix=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`,month=Object.keys(data.days).filter(d=>d.startsWith(prefix));
+  let w=storeTotals(week,si),mo=storeTotals(month,si);
+  $("weekExpected").textContent="₱"+w.expected.toLocaleString();$("weekCollected").textContent="₱"+w.collected.toLocaleString();$("weekBalance").textContent="₱"+w.balance.toLocaleString();$("weekPaid").textContent=w.paid+" / "+w.days;
+  $("monthExpected").textContent="₱"+mo.expected.toLocaleString();$("monthCollected").textContent="₱"+mo.collected.toLocaleString();$("monthBalance").textContent="₱"+mo.balance.toLocaleString();$("monthPaid").textContent=mo.paid+" / "+mo.days;
+  let ds=Object.keys(data.days).sort().reverse();
+  $("dailyReport").innerHTML=ds.length?ds.map(d=>{let r=(data.days[d]||[])[si]||{actual:0},a=Number(r.actual)||0,s=status(a);return `<div class="history-row"><b>${esc(d)}</b> • <span class="pill ${s[1]}">${s[0]}</span><br>Expected ₱800 • Collected ₱${a.toLocaleString()} • Balance ₱${Math.max(E-a,0).toLocaleString()} • Paid By: ${esc(r.rep||"-")} • Collector: ${esc(r.collector||"-")}</div>`}).join(""):"<p class='note'>Wala pay daily records.</p>"
+}
+function showPrint(){
+  const d=$("printDate").value||$("date").value||today();
+  $("printDate").value=d;
+  const mode=$("printMode").value||"all";
+  $("printStore").style.display=mode==="individual"?"":"none";
+  const rs=data.days[d]||blankDay();
+
+  if(mode==="individual"){
+    const si=selectedStore("printStore"), name=STORE_NAMES[si];
+    const dates=Object.keys(data.days).sort();
+    const groups={};
+    dates.forEach(dt=>{
+      const monthKey=dt.slice(0,7);
+      if(!groups[monthKey])groups[monthKey]=[];
+      groups[monthKey].push(dt);
+    });
+
+    let grandExpected=0,grandCollected=0,grandBalance=0,grandPaid=0,grandDays=0;
+
+    const monthSections=Object.keys(groups).map(monthKey=>{
+      const [yy,mm]=monthKey.split("-");
+      const monthName=new Date(Number(yy),Number(mm)-1,1).toLocaleString("en-US",{month:"long",year:"numeric"});
+      let mExpected=0,mCollected=0,mBalance=0,mPaid=0;
+
+      const rows=groups[monthKey].map(dt=>{
+        const r=(data.days[dt]||[])[si]||{store:name,actual:0,time:"",rep:"",collector:"",remarks:""};
+        const a=Number(r.actual)||0,s=status(a),bal=Math.max(E-a,0);
+        mExpected+=E;mCollected+=a;mBalance+=bal;if(a>=E)mPaid++;
+        grandExpected+=E;grandCollected+=a;grandBalance+=bal;if(a>=E)grandPaid++;grandDays++;
+        const parts=dt.split("-");
+        const displayDate=parts.length===3?`${parts[1]}/${parts[2]}/${parts[0]}`:dt;
+        return `<tr><td>${esc(displayDate)}</td><td>₱${E.toLocaleString()}</td><td>₱${a.toLocaleString()}</td><td>₱${bal.toLocaleString()}</td><td>${s[0]}</td><td>${esc(r.time)}</td><td>${esc(r.collector)}</td><td></td><td>${esc(r.remarks)}</td></tr>`;
+      }).join("");
+
+      return `<div class="monthly-section">
+        <h3 class="monthly-title">${esc(monthName)}</h3>
+        <table class="print-table"><thead><tr><th>Date</th><th>Expected</th><th>Actual</th><th>Balance</th><th>Status</th><th>Time</th><th>Collector</th><th>Tenant<br>SIGNATURE</th><th>Remarks</th></tr></thead>
+        <tbody>${rows}
+        <tr class="print-total"><td>${esc(monthName)} TOTAL</td><td>₱${mExpected.toLocaleString()}</td><td>₱${mCollected.toLocaleString()}</td><td>₱${mBalance.toLocaleString()}</td><td colspan="5">Paid: ${mPaid} / ${groups[monthKey].length}</td></tr>
+        </tbody></table>
+      </div>`;
+    }).join("");
+
+    $("printPreview").innerHTML=`<div class="print-report">
+      <h2>BOARDWALK - INDIVIDUAL STORE COLLECTION REPORT</h2>
+      <div class="sub">Store: <b>${esc(name)}</b><br>Daily Continuous Collection — Monthly Totals</div>
+      ${monthSections || `<p style="text-align:center">Wala pay collection records.</p>`}
+      <table class="print-table grand-total-table"><tbody>
+        <tr class="print-total"><td>GRAND TOTAL</td><td>₱${grandExpected.toLocaleString()}</td><td>₱${grandCollected.toLocaleString()}</td><td>₱${grandBalance.toLocaleString()}</td><td colspan="5">Paid: ${grandPaid} / ${grandDays}</td></tr>
+      </tbody></table>
+      <div class="signatures"><div class="sig">Collector Signature</div><div class="sig">Tenant Signature</div></div>
+    </div>`;
+  }else{
+    let collected=rs.reduce((s,r)=>s+(Number(r.actual)||0),0);
+    let balance=Math.max(N*E-collected,0);
+    $("printPreview").innerHTML=`<div class="print-report">
+      <h2>BOARDWALK - ALL STORES COLLECTION REPORT</h2>
+      <div class="sub">Date: <b>${esc(d)}</b><br>7 Stores • ₱800 per store</div>
+      <table class="print-table"><thead><tr><th>#</th><th>Store</th><th>Expected</th><th>Actual</th><th>Balance</th><th>Status</th><th>Time</th><th>Collector</th><th>Tenant<br>SIGNATURE</th><th>Remarks</th></tr></thead><tbody>
+      ${rs.map((r,i)=>{let a=Number(r.actual)||0,s=status(a);return `<tr><td>${i+1}</td><td><b>${esc(r.store||STORE_NAMES[i])}</b></td><td>₱${E.toLocaleString()}</td><td>₱${a.toLocaleString()}</td><td>₱${Math.max(E-a,0).toLocaleString()}</td><td>${s[0]}</td><td>${esc(r.time)}</td><td>${esc(r.collector)}</td><td></td><td>${esc(r.remarks)}</td></tr>`}).join("")}
+      <tr class="print-total"><td colspan="2">TOTAL</td><td>₱5,600</td><td>₱${collected.toLocaleString()}</td><td>₱${balance.toLocaleString()}</td><td colspan="5">Paid: ${rs.filter(r=>(Number(r.actual)||0)>=E).length}/7</td></tr>
+      </tbody></table>
+      <div class="signatures"><div class="sig">Collector Signature</div><div class="sig">Received By</div></div>
+    </div>`;
+  }
+}
+function preparePrint(){showPrint();setTimeout(()=>window.print(),250)}
+function backup(){let blob=new Blob([JSON.stringify(data,null,2)],{type:"application/json"}),a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="sukot7-backup.json";document.body.appendChild(a);a.click();a.remove();toast("Backup exported.")}
+function restore(inp){let f=inp.files&&inp.files[0];if(!f)return;let rd=new FileReader();rd.onload=()=>{try{let x=JSON.parse(rd.result);if(!x||!x.days)throw 0;data=x;if(typeof data.pin!=="string")data.pin="";persist();location.reload()}catch(e){alert("Invalid backup file.")}};rd.readAsText(f)}
+function resetAll(){if(confirm("Delete ALL Sukot 7 records and PIN?")){localStorage.removeItem(KEY);location.reload()}}
+$("date").addEventListener("change",render);
+if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+initSelectors();
+$("printDate").value=today();
+if(data.pin)$("pinMessage").textContent="Ibutang imong saved PIN para maka-access.";
+</script></body></html>
